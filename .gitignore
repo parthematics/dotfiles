@@ -1,0 +1,25 @@
+# Never commit machine-local secrets
+.zshrc.local
+.npmrc
+.sentryclirc
+.lingodotdevrc
+.netrc
+.aws/
+.ssh/
+.kube/config
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+
+# History / state files
+.zsh_history
+.bash_history
+.python_history
+.node_repl_history
+.lesshst
+.viminfo
+
+# macOS
+.DS_Store

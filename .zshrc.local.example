@@ -1,0 +1,6 @@
+# Copy this to ~/.zshrc.local and fill in your own secrets.
+# .zshrc sources this file if it exists. Never commit it.
+
+# export SENTRY_AUTH_TOKEN="sntrys_..."
+# export OPENAI_API_KEY="sk-..."
+# export ANTHROPIC_API_KEY="sk-ant-..."
