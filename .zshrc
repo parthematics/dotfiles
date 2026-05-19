@@ -91,12 +91,19 @@ _git_up() {
   done
 
   echo "git up: ${(j: -> :)chain}"
-  command git checkout "${chain[1]}" && command git pull --ff-only origin "${chain[1]}" || return 1
+  command git fetch origin || return 1
+  command git checkout "${chain[1]}" && command git merge --ff-only "origin/${chain[1]}" || return 1
   local i parent child
   for ((i = 1; i < ${#chain[@]}; i++)); do
     parent="${chain[$i]}"
     child="${chain[$((i + 1))]}"
     command git checkout "$child" || return 1
+    if command git rev-parse --verify --quiet "refs/remotes/origin/$child" >/dev/null; then
+      command git merge --ff-only "origin/$child" || {
+        echo "git up: $child has diverged from origin/$child — resolve manually"
+        return 1
+      }
+    fi
     command git merge --no-edit "$parent" || {
       echo "git up: merge conflicts in $child (merging $parent) — resolve, push, then re-run git up"
       return 1
