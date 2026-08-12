@@ -163,6 +163,57 @@ _cb_render_tree() {
   done
 }
 
+# If BRANCH is checked out in another worktree, print that worktree path.
+_cb_worktree_for_branch() {
+  local branch=$1 path=""
+  while IFS= read -r line; do
+    case "$line" in
+      worktree\ *) path=${line#worktree } ;;
+      branch\ refs/heads/*)
+        if [ "${line#branch refs/heads/}" = "$branch" ]; then
+          print -r -- "$path"
+          return 0
+        fi
+        ;;
+      "") path="" ;;
+    esac
+  done < <(command git worktree list --porcelain 2>/dev/null)
+  return 1
+}
+
+# Checkout BRANCH here. If another worktree holds it, detach that worktree at
+# the same commit (no file loss) and then take the branch locally.
+_cb_checkout() {
+  local branch=$1
+  local err
+  if err=$(command git checkout "$branch" 2>&1); then
+    return 0
+  fi
+  if [[ "$err" != *"already used by worktree"* ]]; then
+    print -r -- "$err" >&2
+    return 1
+  fi
+
+  local wt here
+  wt=$(_cb_worktree_for_branch "$branch")
+  if [ -z "$wt" ]; then
+    wt=${err##*worktree at \'}
+    wt=${wt%%\'*}
+  fi
+  here=$(command git rev-parse --show-toplevel 2>/dev/null)
+  if [ -z "$wt" ] || [ ! -d "$wt" ] || [ "$wt" = "$here" ]; then
+    print -r -- "$err" >&2
+    return 1
+  fi
+
+  print -r -- "Branch '$branch' is checked out in $wt — detaching that worktree, then checking out here."
+  if ! command git -C "$wt" switch --detach >/dev/null; then
+    print -r -- "Failed to detach worktree at $wt" >&2
+    return 1
+  fi
+  command git checkout "$branch"
+}
+
 unalias cb 2>/dev/null
 cb() {
   local current
@@ -198,7 +249,7 @@ cb() {
   selection=$(print -r -- "$tree" | fzf --ansi --reverse)
   [ -z "$selection" ] && return
   branch=$(print -r -- "$selection" | sed -E 's/^[* ] //; s/.*── //' | xargs)
-  [ -n "$branch" ] && command git checkout "$branch"
+  [ -n "$branch" ] && _cb_checkout "$branch"
 }
 
 # `gph`: push current branch and open a PR if one doesn't exist yet
