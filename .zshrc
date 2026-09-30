@@ -229,6 +229,13 @@ cb() {
     [ -n "$head" ] && pr_base[$head]=$base
   done <<< "$pr_lines"
 
+  typeset -A branch_parent
+  local key value
+  while IFS=' ' read -r key value; do
+    key=${key#branch.}
+    branch_parent[${key%.parent}]=$value
+  done < <(command git config --get-regexp '^branch\..*\.parent$' 2>/dev/null)
+
   typeset -gA __cb_children
   __cb_children=()
 
@@ -236,7 +243,7 @@ cb() {
   for b in $branches; do
     [ "$b" = "main" ] && continue
     p="${pr_base[$b]}"
-    [ -z "$p" ] && p=$(command git config "branch.$b.parent" 2>/dev/null)
+    [ -z "$p" ] && p="${branch_parent[$b]}"
     [ -z "$p" ] && p="main"
     if [ "$p" != "main" ] && [[ " ${branches[*]} " != *" $p "* ]]; then
       p="main"
